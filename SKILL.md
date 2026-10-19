@@ -1,19 +1,23 @@
 ---
 name: paper-os
 description: Use when downloading literature or importing PDFs into Obsidian.
-version: 1.1.0
+version: 1.2.0
 author: CaseyTso
 license: MIT
 platforms: [linux, macos]
 metadata:
   hermes:
-    tags: [paper-os, literature, zotero, obsidian, mineru, figure-interpretation, multi-agent]
+    tags: [paper-os, literature, obsidian, mineru, figure-interpretation, multi-agent]
     related_skills: [academic-paper-reviewer, plan]
 ---
 
 # paper-os（学术文献并行摄取与 Obsidian 深度知识体系）
 
-`paper-os` 是面向科研人员的下一代文献摄取与 Obsidian 知识库受管编排系统。通过整合 **源感知并发下载 (Source-Aware Concurrency)** 与 **两段式并行流水线 (Two-Phase Pipeline)**，在保障 Zotero 与 Obsidian 全局互斥写锁安全的前提下，充分发挥 Hermes 子 Agent（`delegate_task`）的并发推理与高清视觉切图算力。
+`paper-os` 是面向科研人员的下一代文献摄取与 Obsidian 知识库受管编排系统。通过整合 **源感知并发下载 (Source-Aware Concurrency)** 与 **两段式并行流水线 (Two-Phase Pipeline)**，在保障 Obsidian 全局互斥写锁安全的前提下，充分发挥 Hermes 子 Agent（`delegate_task`）的并发推理与高清视觉切图算力。
+
+> 📌 **核心归档与存储铁律（Canonical Storage & No-Zotero Default）**：
+> 1. **默认不入 Zotero 库**：所有文献下载与导入流程**默认不写入 Zotero**（跳过 Zotero API 上传与条目创建，以 Obsidian 为唯一中心化学术知识库）。仅在用户显式要求「同步到 Zotero」时才追加 `--zotero`。
+> 2. **PDF 统一落盘归档**：所有获取的文献 PDF 统一归档保存在 Obsidian 文献库对应条目的专属文件夹下：`<vault>/05 Literature/<citation_key>/<citation_key>.pdf`，严禁随意散落外部临时文件夹。
 
 ---
 
@@ -35,11 +39,11 @@ metadata:
 
 主 Agent 接收用户输入后，首先解析文献篇数 $N$ 及核心意图，自动分流至对应链路：
 
-| 意图场景 | 用户典型指令 | 执行路径 | Obsidian 状态 |
+| 意图场景 | 用户典型指令 | 执行路径 | Obsidian / PDF 归档状态 |
 |---|---|---|---|
-| **场景 1: 纯下载** | 「帮我下载这 3 篇文献的 PDF」<br>「把这个 DOI 抓到 Zotero」 | 调用 `paper-fetch` 引擎。<br>$N=1$ 单篇直接抓取；<br>$N \ge 2$ 启动子 Agent 并行下载落盘。 | **绝对不触发** Obsidian 导入，不写库。 |
-| **场景 2: 纯导入** | 「把下载目录里的这 5 个 PDF 导进 Obsidian」<br>「为这篇文献做 MinerU 转换和 Figure 解读」 | 调用 `paper-notes` 引擎。<br>$N=1$ 主 Agent 单篇执行；<br>$N \ge 2$ 启动 **Two-Phase Pipeline**。 | 受管写入 `05 Literature/`，产出条目、MD 与 Figure。 |
-| **场景 3: 下载并导入** | 「下载这 4 篇论文并导入 Obsidian 做解读」<br>「一条龙处理这几个 DOI」 | **端到端组合流水线**：<br>先并发下载 PDF，落地后自动无缝衔接 Two-Phase Pipeline。 | 全流程自动完成，最终重建索引。 |
+| **场景 1: 纯下载** | 「帮我下载这 3 篇文献的 PDF」<br>「只下载文献，暂不做解读」 | 默认 `--no-zotero` 抓取 PDF。<br>受管建立条目并直接归档至各条目目录：`<vault>/05 Literature/<citation_key>/<citation_key>.pdf`。<br>$N=1$ 直接执行；$N \ge 2$ 子 Agent 并发抓取。 | PDF 存入 Obsidian 专属条目目录，生成条目元数据卡片，**不跑** MinerU 与 Figure 解读。不入 Zotero。 |
+| **场景 2: 纯导入** | 「把下载目录里的这 5 个 PDF 导进 Obsidian」<br>「为这篇文献做 MinerU 转换和 Figure 解读」 | 调用 `paper-notes` 引擎。<br>$N=1$ 主 Agent 单篇执行；<br>$N \ge 2$ 启动 **Two-Phase Pipeline**。 | 受管写入 `05 Literature/`，产出条目、MD、300dpi Figure 与解读。 |
+| **场景 3: 下载并导入** | 「下载这 4 篇论文并导入 Obsidian 做解读」<br>「一条龙处理这几个 DOI」 | **端到端组合流水线**：<br>先并发下载 PDF 并归档至条目目录（跳过 Zotero），自动无缝衔接 Two-Phase Pipeline。 | 全流程自动完成，最终重建索引与更新 MOC。 |
 
 ---
 
@@ -47,7 +51,7 @@ metadata:
 
 - **$N < 2$ (单篇文献)**：当前主 Agent 顺序完整执行全部步骤，不调用 `delegate_task`，避免不必要的子 Agent 通信与冷启动开销。
 - **$N \ge 2$ (多篇文献)**：自动开启并发处理。
-  - **下载阶段**：主 Agent 解析标识符列表，分发子 Agent 运行 `paper-fetch fetch '<id>' --json`；遵循 **源感知限流**（Open Access 并发 3~5；ableSci 严格排队串行 1 并发）。
+  - **下载阶段**：主 Agent 解析标识符列表，分发子 Agent 运行 `paper-fetch fetch '<id>' --no-zotero --json`；遵循 **源感知限流**（Open Access 并发 3~5；ableSci 严格排队串行 1 并发）。
   - **导入阶段**：主 Agent 采用 **Two-Phase Pipeline**，仅在耗时最长的「Figure 解读与切图」阶段分发子 Agent。
 
 > 🚨 **【主 Agent 负向绝对禁令（Operational Invariant）】**：
@@ -161,6 +165,7 @@ paper_id: 91663a1f-6ea6-40e0-a851-5688813ced77
 - **单篇/多篇下载**：
   ```bash
   paper-fetch fetch '<identifier>' --json
+  # 注：默认已配置为不入 Zotero，若需同步到 Zotero 请显式追加 --zotero
   ```
 - **Obsidian 条目创建 (受管写锁)**：
   ```bash
@@ -179,8 +184,8 @@ paper_id: 91663a1f-6ea6-40e0-a851-5688813ced77
 
 ## 7. 验收清单 (Verification Checklist)
 
+- [ ] 默认不入 Zotero 库，以 Obsidian `<vault>/05 Literature/<citation_key>/<citation_key>.pdf` 为统一归档载体
 - [ ] $N \ge 2$ 时自动派发 `delegate_task` 并行执行，子 Agent 互不抢占写锁
-- [ ] 意图识别准确：纯下载不写 Obsidian，纯导入不触发抓取，下载并导入全自动衔接
 - [ ] `Figure解读_*.md` Frontmatter 必定包含 `title` 属性（原论文标题）
 - [ ] 文首包含规范的 `## Overview`（4–6 条加粗维度 bullet）
 - [ ] 图像严格为 300dpi Sub-panel 单独切分，禁止整图糊弄

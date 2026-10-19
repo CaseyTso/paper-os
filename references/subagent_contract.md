@@ -14,14 +14,14 @@
 ```python
 delegate_task(tasks=[
     {
-        "goal": "Download academic paper PDF and register to Zotero using paper-fetch CLI",
+        "goal": "Download academic paper PDF using paper-fetch CLI (default without Zotero sync)",
         "context": (
             "Identifier: '10.1038/s41586-026-10250-y'\n"
             "Output directory: '/path/to/downloads'\n"
             "Instructions:\n"
-            "1. Run `paper-fetch fetch '10.1038/s41586-026-10250-y' --json`.\n"
+            "1. Run `paper-fetch fetch '10.1038/s41586-026-10250-y' --no-zotero --json`.\n"
             "2. Read the structured JSON stdout.\n"
-            "3. If successful, report success, the absolute pdf_path, and zotero_item_key.\n"
+            "3. If successful, report success and the absolute pdf_path.\n"
             "4. If challenge_required or authentication_required occurs, record the status, source, and exact URL.\n"
             "5. Return a strict JSON summary."
         ),
