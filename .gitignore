@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Caches and temporary files
+.pytest_cache/
+.coverage
+.tmp/
+*.tmp
+*.zip
+
+# macOS metadata
+.DS_Store
+
+# Obsidian Vault runtime / sensitive
+.paper-notes/write.lock

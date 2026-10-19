@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "paper-os"
+version = "0.1.0"
+description = "Autonomous literature acquisition and Obsidian-native knowledge system orchestrator"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "CaseyTso", email = "zuolin01@sjtu.edu.cn" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "pymupdf>=1.24.0",
+    "requests>=2.31.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+paper-os = "paper_os.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["paper_os"]
